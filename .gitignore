@@ -6,3 +6,4 @@ node_modules/
 .next/
 backend/.env
 backend/tmp/
+*.egg-info/
