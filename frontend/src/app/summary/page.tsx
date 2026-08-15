@@ -8,6 +8,11 @@ import { useSearchStore } from '@/stores/useSearchStore'
 import type { LegSelection } from '@/types/award'
 
 function LegSummary({ title, leg }: { title: string; leg: LegSelection }) {
+  const availableClasses = [
+    leg.flight.seats.economy > 0 && '이코노미',
+    leg.flight.seats.business > 0 && '비즈니스',
+    leg.flight.seats.first > 0 && '일등석',
+  ].filter(Boolean)
   return (
     <Card>
       <CardHeader>
@@ -18,12 +23,9 @@ function LegSummary({ title, leg }: { title: string; leg: LegSelection }) {
           {leg.dep} → {leg.dest}
         </p>
         <p>
-          {leg.date} {leg.flight.flightNo} {leg.flight.depTime}→{leg.flight.arrTime}
+          {leg.date} {leg.flight.flightNo} {leg.flight.depTime} 출발
         </p>
-        <p className="text-muted-foreground">
-          이코노미 {leg.flight.seats.economy} · 비즈니스 {leg.flight.seats.business} · 일등석{' '}
-          {leg.flight.seats.first}
-        </p>
+        <p className="text-muted-foreground">{availableClasses.join(' · ')} 가능</p>
       </CardContent>
     </Card>
   )

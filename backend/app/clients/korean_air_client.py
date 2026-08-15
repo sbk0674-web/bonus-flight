@@ -1,5 +1,6 @@
 """대한항공 사이트 로그인 및 좌석 조회를 담당하는 Playwright 클라이언트."""
 import asyncio
+import os
 import time
 from pathlib import Path
 
@@ -10,6 +11,11 @@ from app.models.schemas import CalendarDay, FlightOption, SeatCounts
 SESSION_TTL_SECONDS = 15 * 60
 LOGIN_URL = "https://www.koreanair.com/korea/ko.html"
 GOTO_TIMEOUT_MS = 30 * 1000
+
+# 설정돼 있으면 매번 새 브라우저를 띄우는 대신 이미 떠 있는 브라우저(예: 사용자가
+# 평소 쓰는 웨일/크롬을 --remote-debugging-port로 띄운 것)에 CDP로 붙는다.
+# 이미 로그인돼 있는 브라우저면 매번 로그인할 필요가 없다.
+CDP_ENDPOINT = os.environ.get("KOREANAIR_CDP_ENDPOINT")
 
 # 로그인 성공 여부 판단: 로그인 전 헤더에는 "로그인" 버튼이 정확히 이 텍스트로
 # 떠 있다 (실사로 확인됨, 2026-08-15 스크린샷). 로그인하면 이 버튼이 사라지므로
@@ -30,38 +36,58 @@ async def _dump_debug_state(page: Page, label: str) -> None:
     except Exception:
         pass
 
-CALENDAR_API_PATH = "/api/booking/award-calendar"  # Task 3 스파이크 결과로 확정 필요
+CALENDAR_API_PATH = "/api/hmp/bonusSeatView/bonusSeatView"
+
+# 실사로 확인된 실제 응답 구조 (2026-08-15, 로그인된 웨일 브라우저 CDP로 확인):
+#   POST body: {"departureAirport": "PUS", "arrivalAirport": "NRT", "departureDate": "20261001"}
+#   (departureDate는 조회하려는 달의 1일, YYYYMMDD. 응답은 그 달 전체를 돌려준다)
+#   응답: {"flightList": [{"departureDate": "20261001",
+#           "flightDetailList": [{"departureTime": "07:55", "flightNumber": "KE5083",
+#             "availableSeat": true, "bookingClass": "X", "frontBookingClass": "E"}, ...]}]}
+# 대한항공은 등급별 정확한 잔여석 "개수"를 안 주고 availableSeat true/false(있다/없다)만
+# 준다. 도착시간(arrTime)도 이 API엔 없다. 그래서 SeatCounts의 값은 실제로는
+# "있으면 1, 없으면 0"이고, arr_time은 항상 빈 문자열이다.
+FRONT_CLASS_TO_SEAT_FIELD = {"E": "economy", "P": "business", "U": "first"}
 
 
 def parse_calendar_response(raw: dict) -> list[CalendarDay]:
-    """대한항공 캘린더 원시 응답을 CalendarDay 리스트로 변환한다.
+    """대한항공 bonusSeatView 원시 응답을 CalendarDay 리스트로 변환한다.
 
-    좌석이 전부 0인 편은 제외하고, 그 결과 편이 하나도 안 남는 날짜도 제외한다.
+    같은 편(편명+출발시간)에 등급(E/P/U)별로 한 줄씩 내려오므로 편 단위로 묶고,
+    좌석이 하나도 없는 편/날짜는 제외한다.
 
     Args:
-        raw: 대한항공 API/HTML 파싱 결과 dict (days -> flights 구조).
+        raw: bonusSeatView API 응답 dict (flightList -> flightDetailList 구조).
 
     Returns:
         좌석이 있는 날짜만 담긴 CalendarDay 리스트.
     """
     result: list[CalendarDay] = []
-    for day in raw.get("days", []):
-        available_flights = [
+    for day in raw.get("flightList", []):
+        flights_by_key: dict[tuple[str, str], dict[str, int]] = {}
+        for detail in day.get("flightDetailList", []):
+            field = FRONT_CLASS_TO_SEAT_FIELD.get(detail.get("frontBookingClass"))
+            if field is None or not detail.get("availableSeat"):
+                continue
+            key = (detail["flightNumber"], detail["departureTime"])
+            seats = flights_by_key.setdefault(key, {"economy": 0, "business": 0, "first": 0})
+            seats[field] = 1
+
+        if not flights_by_key:
+            continue
+
+        flights = [
             FlightOption(
-                flight_no=f["flightNo"],
-                dep_time=f["depTime"],
-                arr_time=f["arrTime"],
-                seats=SeatCounts(
-                    economy=f["economySeats"],
-                    business=f["businessSeats"],
-                    first=f["firstSeats"],
-                ),
+                flight_no=flight_no,
+                dep_time=dep_time,
+                arr_time="",
+                seats=SeatCounts(**seats),
             )
-            for f in day.get("flights", [])
-            if f["economySeats"] > 0 or f["businessSeats"] > 0 or f["firstSeats"] > 0
+            for (flight_no, dep_time), seats in flights_by_key.items()
         ]
-        if available_flights:
-            result.append(CalendarDay(date=day["date"], flights=available_flights))
+        raw_date = day["departureDate"]
+        date = f"{raw_date[0:4]}-{raw_date[4:6]}-{raw_date[6:8]}"
+        result.append(CalendarDay(date=date, flights=flights))
     return result
 
 
@@ -109,8 +135,15 @@ class KoreanAirClient:
 
         if self._browser is None:
             playwright = await async_playwright().start()
-            self._browser = await playwright.chromium.launch(headless=False)
-            self._page = await self._browser.new_page()
+            if CDP_ENDPOINT:
+                self._browser = await playwright.chromium.connect_over_cdp(CDP_ENDPOINT)
+                context = self._browser.contexts[0] if self._browser.contexts else (
+                    await self._browser.new_context()
+                )
+                self._page = await context.new_page()
+            else:
+                self._browser = await playwright.chromium.launch(headless=False)
+                self._page = await self._browser.new_page()
 
         assert self._page is not None
 
@@ -171,9 +204,15 @@ class KoreanAirClient:
             await self.ensure_logged_in()
             assert self._page is not None
 
-            response = await self._page.request.get(
+            year, mon = month.split("-")
+            departure_date = f"{year}{mon}01"  # bonusSeatView는 그 달 1일 기준으로 한 달치를 돌려줌
+            response = await self._page.request.post(
                 CALENDAR_API_PATH,
-                params={"dep": dep, "dest": dest, "month": month},
+                data={
+                    "departureAirport": dep,
+                    "arrivalAirport": dest,
+                    "departureDate": departure_date,
+                },
             )
             if response.status == 403:
                 raise AntiBotDetectedError("캘린더 조회 중 봇 탐지 감지")
@@ -182,7 +221,18 @@ class KoreanAirClient:
             return parse_calendar_response(raw)
 
     async def close(self) -> None:
-        """브라우저를 종료한다."""
+        """브라우저(또는 CDP 모드에서는 우리가 연 탭)를 정리한다.
+
+        CDP로 기존 브라우저(사용자의 웨일 등)에 붙은 경우, browser.close()를
+        부르면 사용자의 다른 탭까지 전부 닫힐 위험이 있다. CDP 모드에서는
+        우리가 새로 연 탭(self._page)만 닫고 브라우저 연결은 그대로 둔다.
+        """
+        if CDP_ENDPOINT:
+            if self._page is not None:
+                await self._page.close()
+            self._browser = None
+            return
+
         if self._browser is not None:
             await self._browser.close()
             self._browser = None

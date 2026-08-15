@@ -1,16 +1,24 @@
 {
-  "days": [
+  "departureAirport": "PUS",
+  "arrivalAirport": "NRT",
+  "flightList": [
     {
-      "date": "2026-09-10",
-      "flights": [
-        {"flightNo": "KE001", "depTime": "09:00", "arrTime": "12:00", "economySeats": 3, "businessSeats": 1, "firstSeats": 0},
-        {"flightNo": "KE005", "depTime": "18:00", "arrTime": "21:00", "economySeats": 0, "businessSeats": 0, "firstSeats": 0}
+      "departureDate": "20260910",
+      "flightDetailList": [
+        {"departureTime": "09:00", "flightNumber": "KE001", "availableSeat": true, "bookingClass": "X", "frontBookingClass": "E"},
+        {"departureTime": "09:00", "flightNumber": "KE001", "availableSeat": true, "bookingClass": "O", "frontBookingClass": "P"},
+        {"departureTime": "09:00", "flightNumber": "KE001", "availableSeat": false, "bookingClass": "Z", "frontBookingClass": "U"},
+        {"departureTime": "18:00", "flightNumber": "KE005", "availableSeat": false, "bookingClass": "X", "frontBookingClass": "E"},
+        {"departureTime": "18:00", "flightNumber": "KE005", "availableSeat": false, "bookingClass": "O", "frontBookingClass": "P"},
+        {"departureTime": "18:00", "flightNumber": "KE005", "availableSeat": false, "bookingClass": "Z", "frontBookingClass": "U"}
       ]
     },
     {
-      "date": "2026-09-11",
-      "flights": [
-        {"flightNo": "KE001", "depTime": "09:00", "arrTime": "12:00", "economySeats": 0, "businessSeats": 0, "firstSeats": 0}
+      "departureDate": "20260911",
+      "flightDetailList": [
+        {"departureTime": "09:00", "flightNumber": "KE001", "availableSeat": false, "bookingClass": "X", "frontBookingClass": "E"},
+        {"departureTime": "09:00", "flightNumber": "KE001", "availableSeat": false, "bookingClass": "O", "frontBookingClass": "P"},
+        {"departureTime": "09:00", "flightNumber": "KE001", "availableSeat": false, "bookingClass": "Z", "frontBookingClass": "U"}
       ]
     }
   ]
