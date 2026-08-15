@@ -1,8 +1,16 @@
 """FastAPI 앱 엔트리포인트."""
-from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
+import asyncio
+import sys
 
-from app.routers import calendar, routes
+if sys.platform == "win32":
+    # Windows 기본 SelectorEventLoop는 자식 프로세스(Playwright가 띄우는 브라우저)를
+    # 지원하지 않는다. uvicorn이 이벤트 루프를 만들기 전에 정책을 바꿔야 한다.
+    asyncio.set_event_loop_policy(asyncio.WindowsProactorEventLoopPolicy())
+
+from fastapi import FastAPI  # noqa: E402
+from fastapi.middleware.cors import CORSMiddleware  # noqa: E402
+
+from app.routers import calendar, routes  # noqa: E402
 
 app = FastAPI(title="krean-mileage-backend")
 app.add_middleware(
