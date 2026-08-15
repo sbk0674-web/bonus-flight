@@ -61,3 +61,32 @@ async def test_search_calendar_does_not_retry_on_anti_bot_detection():
         await service.search_calendar("ICN", "NRT", "2026-09")
 
     assert mock_client.fetch_calendar.call_count == 1
+
+
+@pytest.mark.asyncio
+async def test_search_calendar_raises_login_failed_message_when_retry_also_fails():
+    """재시도까지 로그인 실패하면 사용자 메시지가 '대한항공 로그인 실패'여야 한다."""
+    mock_client = AsyncMock()
+    mock_client.fetch_calendar.side_effect = [
+        KoreanAirLoginError("세션 만료"),
+        KoreanAirLoginError("재시도도 로그인 실패"),
+    ]
+    service = AwardSearchService(client=mock_client)
+
+    with pytest.raises(ScrapeFailedError) as exc_info:
+        await service.search_calendar("ICN", "NRT", "2026-09")
+
+    assert exc_info.value.user_message == "대한항공 로그인 실패"
+
+
+@pytest.mark.asyncio
+async def test_search_calendar_converts_unexpected_exception_to_default_message():
+    """로그인/봇 탐지 외의 예외도 잡아서 기본 사용자 메시지로 변환한다."""
+    mock_client = AsyncMock()
+    mock_client.fetch_calendar.side_effect = ValueError("파싱 실패")
+    service = AwardSearchService(client=mock_client)
+
+    with pytest.raises(ScrapeFailedError) as exc_info:
+        await service.search_calendar("ICN", "NRT", "2026-09")
+
+    assert exc_info.value.user_message == "조회 실패, 다시 시도해주세요"
