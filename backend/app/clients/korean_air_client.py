@@ -3,6 +3,8 @@ import time
 
 from playwright.async_api import Browser, Page, async_playwright
 
+from app.models.schemas import CalendarDay, FlightOption, SeatCounts
+
 SESSION_TTL_SECONDS = 15 * 60
 LOGIN_URL = "https://www.koreanair.com/korea/ko.html"
 
@@ -10,6 +12,40 @@ LOGIN_URL = "https://www.koreanair.com/korea/ko.html"
 SELECTOR_ID_INPUT = "input[name=userId]"
 SELECTOR_PW_INPUT = "input[name=userPw]"
 SELECTOR_LOGIN_SUBMIT = "button[type=submit]"
+
+CALENDAR_API_PATH = "/api/booking/award-calendar"  # Task 3 스파이크 결과로 확정 필요
+
+
+def parse_calendar_response(raw: dict) -> list[CalendarDay]:
+    """대한항공 캘린더 원시 응답을 CalendarDay 리스트로 변환한다.
+
+    좌석이 전부 0인 편은 제외하고, 그 결과 편이 하나도 안 남는 날짜도 제외한다.
+
+    Args:
+        raw: 대한항공 API/HTML 파싱 결과 dict (days -> flights 구조).
+
+    Returns:
+        좌석이 있는 날짜만 담긴 CalendarDay 리스트.
+    """
+    result: list[CalendarDay] = []
+    for day in raw.get("days", []):
+        available_flights = [
+            FlightOption(
+                flight_no=f["flightNo"],
+                dep_time=f["depTime"],
+                arr_time=f["arrTime"],
+                seats=SeatCounts(
+                    economy=f["economySeats"],
+                    business=f["businessSeats"],
+                    first=f["firstSeats"],
+                ),
+            )
+            for f in day.get("flights", [])
+            if f["economySeats"] > 0 or f["businessSeats"] > 0 or f["firstSeats"] > 0
+        ]
+        if available_flights:
+            result.append(CalendarDay(date=day["date"], flights=available_flights))
+    return result
 
 
 class KoreanAirLoginError(Exception):
@@ -82,6 +118,33 @@ class KoreanAirClient:
             raise
 
         self._session_expires_at = time.time() + SESSION_TTL_SECONDS
+
+    async def fetch_calendar(self, dep: str, dest: str, month: str) -> list[CalendarDay]:
+        """출발지/목적지/월 기준 좌석 있는 날짜만 캘린더로 반환한다.
+
+        Args:
+            dep: 출발 공항 코드.
+            dest: 목적지 공항 코드.
+            month: 조회월 (YYYY-MM).
+
+        Returns:
+            좌석이 있는 날짜만 담긴 CalendarDay 리스트.
+
+        Raises:
+            AntiBotDetectedError: 조회 중 봇 탐지 감지 시.
+        """
+        await self.ensure_logged_in()
+        assert self._page is not None
+
+        response = await self._page.request.get(
+            CALENDAR_API_PATH,
+            params={"dep": dep, "dest": dest, "month": month},
+        )
+        if response.status == 403:
+            raise AntiBotDetectedError("캘린더 조회 중 봇 탐지 감지")
+
+        raw = await response.json()
+        return parse_calendar_response(raw)
 
     async def close(self) -> None:
         """브라우저를 종료한다."""

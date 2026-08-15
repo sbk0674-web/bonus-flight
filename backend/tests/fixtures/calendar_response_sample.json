@@ -1,0 +1,17 @@
+{
+  "days": [
+    {
+      "date": "2026-09-10",
+      "flights": [
+        {"flightNo": "KE001", "depTime": "09:00", "arrTime": "12:00", "economySeats": 3, "businessSeats": 1, "firstSeats": 0},
+        {"flightNo": "KE005", "depTime": "18:00", "arrTime": "21:00", "economySeats": 0, "businessSeats": 0, "firstSeats": 0}
+      ]
+    },
+    {
+      "date": "2026-09-11",
+      "flights": [
+        {"flightNo": "KE001", "depTime": "09:00", "arrTime": "12:00", "economySeats": 0, "businessSeats": 0, "firstSeats": 0}
+      ]
+    }
+  ]
+}
