@@ -30,6 +30,37 @@ type RawErrorBody = {
   detail?: string
 }
 
+type RawSettingsStatus = {
+  configured: boolean
+  koreanair_id: string | null
+}
+
+export type SettingsStatus = {
+  configured: boolean
+  koreanairId: string | null
+}
+
+export async function fetchSettingsStatus(): Promise<SettingsStatus> {
+  const res = await fetch(`${API_BASE}/api/settings`)
+  if (!res.ok) throw new Error('설정 조회 실패')
+  const body = (await res.json()) as unknown as RawSettingsStatus
+  return { configured: body.configured, koreanairId: body.koreanair_id }
+}
+
+export async function saveSettings(koreanairId: string, koreanairPw: string): Promise<SettingsStatus> {
+  const res = await fetch(`${API_BASE}/api/settings`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ koreanair_id: koreanairId, koreanair_pw: koreanairPw }),
+  })
+  if (!res.ok) {
+    const errorBody = (await res.json().catch(() => ({ detail: '저장 실패' }))) as unknown as RawErrorBody
+    throw new Error(errorBody.detail ?? '저장 실패')
+  }
+  const body = (await res.json()) as unknown as RawSettingsStatus
+  return { configured: body.configured, koreanairId: body.koreanair_id }
+}
+
 export async function fetchRoutes(dep: string, month: string): Promise<RouteOption[]> {
   const res = await fetch(`${API_BASE}/api/routes?dep=${dep}&month=${month}`)
   if (!res.ok) throw new Error('노선 조회 실패')

@@ -1,8 +1,10 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
+import { fetchSettingsStatus } from '@/lib/api'
 import { useSearchStore } from '@/stores/useSearchStore'
 
 const DOMESTIC_AIRPORTS = [
@@ -17,6 +19,13 @@ export default function DeparturePage() {
   const setDeparture = useSearchStore((s) => s.setDeparture)
   const [dep, setDep] = useState('')
   const [month, setMonth] = useState('')
+  const [configured, setConfigured] = useState<boolean | null>(null)
+
+  useEffect(() => {
+    fetchSettingsStatus()
+      .then((status) => setConfigured(status.configured))
+      .catch(() => setConfigured(null))
+  }, [])
 
   const canSearch = dep !== '' && month !== ''
 
@@ -28,6 +37,17 @@ export default function DeparturePage() {
   return (
     <main className="flex flex-col items-center gap-4 p-8">
       <h1 className="text-xl font-bold">출발지 선택</h1>
+      {configured === false && (
+        <p className="text-sm text-red-600">
+          대한항공 계정이 설정되지 않았습니다.{' '}
+          <Link href="/settings" className="underline">
+            설정 화면으로 이동
+          </Link>
+        </p>
+      )}
+      <Link href="/settings" className="text-sm text-gray-500 underline self-end">
+        계정 설정
+      </Link>
       <select
         className="border rounded p-2"
         value={dep}
