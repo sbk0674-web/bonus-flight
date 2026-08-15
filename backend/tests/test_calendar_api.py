@@ -2,7 +2,7 @@
 from fastapi.testclient import TestClient
 
 from app.main import app
-from app.models.schemas import CalendarDay
+from app.models.schemas import CalendarDay, FlightOption, SeatCounts
 from app.routers.calendar import get_award_search_service
 from app.services.award_search_service import ScrapeFailedError
 
@@ -11,7 +11,19 @@ client = TestClient(app)
 
 class _FakeServiceOk:
     async def search_calendar(self, dep, dest, month):
-        return [CalendarDay(date="2026-09-10", flights=[])]
+        return [
+            CalendarDay(
+                date="2026-09-10",
+                flights=[
+                    FlightOption(
+                        flight_no="KE001",
+                        dep_time="09:00",
+                        arr_time="12:00",
+                        seats=SeatCounts(economy=2, business=1, first=0),
+                    )
+                ],
+            )
+        ]
 
 
 class _FakeServiceFail:
@@ -26,7 +38,15 @@ def test_post_calendar_returns_days_on_success():
     app.dependency_overrides.clear()
 
     assert res.status_code == 200
-    assert res.json() == [{"date": "2026-09-10", "flights": []}]
+    body = res.json()
+    assert body[0]["date"] == "2026-09-10"
+    flight = body[0]["flights"][0]
+    assert flight["flight_no"] == "KE001"
+    assert flight["dep_time"] == "09:00"
+    assert flight["arr_time"] == "12:00"
+    assert flight["seats"]["economy"] == 2
+    assert flight["seats"]["business"] == 1
+    assert flight["seats"]["first"] == 0
 
 
 def test_post_calendar_returns_502_on_scrape_failure():

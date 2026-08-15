@@ -32,4 +32,4 @@ async def search_calendar(
     try:
         return await service.search_calendar(body.dep, body.dest, body.month)
     except ScrapeFailedError as exc:
-        raise HTTPException(status_code=502, detail=f"조회 실패, 다시 시도해주세요: {exc}") from exc
+        raise HTTPException(status_code=502, detail=exc.user_message) from exc
