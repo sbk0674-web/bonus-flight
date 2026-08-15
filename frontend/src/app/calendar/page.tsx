@@ -18,7 +18,7 @@ function CalendarPageInner() {
 
   const dep = leg === 'outbound' ? store.dep : store.outbound?.dest ?? null
   const dest = leg === 'outbound' ? store.pendingDest : store.dep
-  const month = leg === 'outbound' ? store.month : store.pendingDest ? store.month : null
+  const month = leg === 'outbound' ? store.month : store.pendingDest ? store.returnMonth : null
 
   useEffect(() => {
     if (!dep || !dest || !month) {
