@@ -45,8 +45,22 @@ function CalendarPageInner() {
     }
   }
 
-  if (loading) return <p className="p-8">좌석 조회 중... (수 초~수십 초 걸릴 수 있습니다)</p>
-  if (error) return <p className="p-8 text-red-600">{error}</p>
+  if (loading) {
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-background p-6">
+        <p className="text-sm text-muted-foreground">
+          좌석 조회 중... (수 초~수십 초 걸릴 수 있습니다)
+        </p>
+      </main>
+    )
+  }
+  if (error) {
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-background p-6">
+        <p className="text-destructive">{error}</p>
+      </main>
+    )
+  }
 
   // 오는편은 가는편 출발일보다 이른 날짜를 선택할 수 없도록 필터링한다
   const visibleDays =
@@ -55,8 +69,8 @@ function CalendarPageInner() {
       : days
 
   return (
-    <main className="flex flex-col gap-4 p-8">
-      <h1 className="text-xl font-bold">{leg === 'outbound' ? '가는편' : '오는편'} 선택</h1>
+    <main className="flex min-h-screen flex-col items-center gap-4 bg-background p-6">
+      <h1 className="text-lg font-medium">{leg === 'outbound' ? '가는편' : '오는편'} 선택</h1>
       <CalendarView days={visibleDays} onSelectFlight={handleSelectFlight} />
     </main>
   )

@@ -1,5 +1,7 @@
 'use client'
 
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import type { CalendarDay, FlightOption } from '@/types/award'
 
 type Props = {
@@ -9,27 +11,31 @@ type Props = {
 
 export function CalendarView({ days, onSelectFlight }: Props) {
   if (days.length === 0) {
-    return <p>이 달에는 좌석이 있는 날짜가 없습니다.</p>
+    return <p className="text-sm text-muted-foreground">이 달에는 좌석이 있는 날짜가 없습니다.</p>
   }
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex w-full max-w-md flex-col gap-3">
       {days.map((day) => (
-        <div key={day.date} className="border rounded p-3">
-          <p className="font-semibold">{day.date}</p>
-          <ul className="flex flex-col gap-1 mt-2">
+        <Card key={day.date}>
+          <CardHeader>
+            <CardTitle className="text-sm">{day.date}</CardTitle>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-2">
             {day.flights.map((flight) => (
-              <li key={flight.flightNo}>
-                <button
-                  className="border rounded p-2 w-full text-left text-sm"
-                  onClick={() => onSelectFlight(day.date, flight)}
-                >
-                  {flight.flightNo} {flight.depTime}→{flight.arrTime} | 이코노미 {flight.seats.economy} · 비즈니스 {flight.seats.business} · 일등석 {flight.seats.first}
-                </button>
-              </li>
+              <Button
+                key={flight.flightNo}
+                variant="outline"
+                className="h-auto w-full justify-start whitespace-normal py-2 text-left text-sm"
+                onClick={() => onSelectFlight(day.date, flight)}
+              >
+                {flight.flightNo} {flight.depTime}→{flight.arrTime} | 이코노미{' '}
+                {flight.seats.economy} · 비즈니스 {flight.seats.business} · 일등석{' '}
+                {flight.seats.first}
+              </Button>
             ))}
-          </ul>
-        </div>
+          </CardContent>
+        </Card>
       ))}
     </div>
   )

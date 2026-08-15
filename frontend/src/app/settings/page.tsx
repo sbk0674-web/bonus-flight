@@ -3,6 +3,8 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
 import { fetchSettingsStatus, saveSettings } from '@/lib/api'
 
 export default function SettingsPage() {
@@ -35,32 +37,45 @@ export default function SettingsPage() {
   }
 
   return (
-    <main className="flex flex-col items-center gap-4 p-8">
-      <h1 className="text-xl font-bold">대한항공 계정 설정</h1>
-      <p className="text-sm text-gray-500">
-        좌석 조회는 이 계정으로 대한항공에 로그인해서 진행됩니다. 로컬 백엔드 서버에만 저장되며 대한항공 외 다른 곳으로는 전송되지 않습니다.
-      </p>
-      {currentId && (
-        <p className="text-sm text-gray-500">현재 설정된 아이디: {currentId}</p>
-      )}
-      <input
-        type="text"
-        placeholder="SKYPASS 아이디"
-        className="border rounded p-2 w-64"
-        value={koreanairId}
-        onChange={(e) => setKoreanairId(e.target.value)}
-      />
-      <input
-        type="password"
-        placeholder="비밀번호"
-        className="border rounded p-2 w-64"
-        value={koreanairPw}
-        onChange={(e) => setKoreanairPw(e.target.value)}
-      />
-      {error && <p className="text-red-600 text-sm">{error}</p>}
-      <Button disabled={!canSave || saving} onClick={handleSave}>
-        {saving ? '저장 중...' : '저장'}
-      </Button>
+    <main className="flex min-h-screen items-center justify-center bg-background p-6">
+      <Card className="w-full max-w-sm">
+        <CardHeader>
+          <CardTitle className="text-lg">대한항공 계정 설정</CardTitle>
+          <CardDescription>
+            좌석 조회는 이 계정으로 대한항공에 로그인해서 진행됩니다. 로컬 백엔드 서버에만
+            저장되며 대한항공 외 다른 곳으로는 전송되지 않습니다.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-4">
+          {currentId && (
+            <p className="text-sm text-muted-foreground">현재 설정된 아이디: {currentId}</p>
+          )}
+
+          <div className="flex flex-col gap-1.5">
+            <label className="text-sm font-medium">SKYPASS 아이디</label>
+            <Input
+              type="text"
+              value={koreanairId}
+              onChange={(e) => setKoreanairId(e.target.value)}
+            />
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <label className="text-sm font-medium">비밀번호</label>
+            <Input
+              type="password"
+              value={koreanairPw}
+              onChange={(e) => setKoreanairPw(e.target.value)}
+            />
+          </div>
+
+          {error && <p className="text-sm text-destructive">{error}</p>}
+
+          <Button disabled={!canSave || saving} onClick={handleSave} className="mt-2">
+            {saving ? '저장 중...' : '저장'}
+          </Button>
+        </CardContent>
+      </Card>
     </main>
   )
 }
