@@ -58,19 +58,28 @@ class KoreanAirClient:
             self._page = await self._browser.new_page()
 
         assert self._page is not None
-        await self._page.goto(LOGIN_URL)
-
-        if await self._page.locator("text=자동입력 방지").count() > 0:
-            raise AntiBotDetectedError("로그인 페이지에서 봇 탐지 감지")
-
-        await self._page.fill(SELECTOR_ID_INPUT, self._user_id)
-        await self._page.fill(SELECTOR_PW_INPUT, self._password)
-        await self._page.click(SELECTOR_LOGIN_SUBMIT)
 
         try:
-            await self._page.wait_for_selector("text=로그아웃", timeout=10_000)
-        except Exception as exc:
-            raise KoreanAirLoginError("로그인 실패: 자격증명 또는 페이지 구조 확인 필요") from exc
+            await self._page.goto(LOGIN_URL)
+
+            if await self._page.locator("text=자동입력 방지").count() > 0:
+                raise AntiBotDetectedError("로그인 페이지에서 봇 탐지 감지")
+
+            await self._page.fill(SELECTOR_ID_INPUT, self._user_id)
+            await self._page.fill(SELECTOR_PW_INPUT, self._password)
+            await self._page.click(SELECTOR_LOGIN_SUBMIT)
+
+            try:
+                await self._page.wait_for_selector("text=로그아웃", timeout=10_000)
+            except Exception as exc:
+                raise KoreanAirLoginError("로그인 실패: 자격증명 또는 페이지 구조 확인 필요") from exc
+        except (AntiBotDetectedError, KoreanAirLoginError):
+            # 로그인 실패 시 브라우저/페이지를 오염된 상태로 남겨두지 않는다.
+            # 다음 ensure_logged_in() 호출(예: 서비스 레이어의 재시도)이
+            # 완전히 새로운 브라우저로 시작하도록 내부 상태를 초기화한다.
+            await self.close()
+            self._page = None
+            raise
 
         self._session_expires_at = time.time() + SESSION_TTL_SECONDS
 
