@@ -14,15 +14,28 @@
 **이후 매번**: `start.bat` 더블클릭 — 백엔드/프론트 서버가 뜨고 브라우저가 자동으로 열립니다.
 
 대한항공은 네이버 등 소셜 로그인도 지원하므로 이 앱은 아이디/비밀번호를 저장하거나
-자동입력하지 않습니다. 웹앱에서 "조회"를 누르면 브라우저 창이 하나 뜨고, 그 창에서
-**매번 직접** 대한항공에 로그인하면 됩니다(5분 안에 로그인하면 이후 15분간 세션 재사용).
+자동입력하지 않습니다. 대신 두 가지 방식으로 로그인 세션을 씁니다:
 
-> **주의**: 실제 캘린더 조회가 동작하려면 먼저 `backend/scripts/spike_login.py`
-> (Task 3 조사 스파이크)를 직접 실행해서 로그인 성공 마커와
-> `app/clients/korean_air_client.py`의 `CALENDAR_API_PATH` 등 플레이스홀더 값을 실제 값으로
-> 교체해야 합니다. 이 스파이크는 사람이 브라우저를 보며 대화형으로 실행해야 하는 작업이라
-> 자동화된 환경에서는 수행할 수 없습니다. (배치파일로는 실행 안 됨 — 터미널에서 직접
-> `python scripts/spike_login.py`로 실행)
+**방식 A (추천): 웨일 브라우저에 CDP로 접속**
+
+평소 쓰는 네이버 웨일에 이미 로그인돼 있으면, 매번 새로 로그인할 필요 없이 그 세션을
+그대로 재사용합니다. 웨일을 아래 플래그로 띄운 상태에서 `start.bat`을 실행하면 됩니다.
+
+```bash
+"C:\Program Files\Naver\Naver Whale\Application\<버전>\whale.exe" --remote-debugging-port=9223 --remote-allow-origins=*
+```
+
+(`--remote-allow-origins=*` 없으면 최신 크로미움 보안 정책 때문에 CDP 연결 자체가 안 됩니다.)
+백엔드 실행 시 `KOREANAIR_CDP_ENDPOINT=http://localhost:9223` 환경변수를 설정하면 이 방식이 켜집니다
+(`start.bat`에 이미 반영돼 있음).
+
+**방식 B: 매번 새 브라우저로 직접 로그인**
+
+`KOREANAIR_CDP_ENDPOINT`를 설정하지 않으면, "조회"를 누를 때마다 headed 브라우저 창이 새로
+뜨고 그 창에서 직접 로그인해야 합니다 (5분 안에 로그인하면 이후 15분간 세션 재사용).
+
+실제 캘린더 API(`/api/hmp/bonusSeatView/bonusSeatView`)와 로그인 성공 판단 로직은 실사로
+검증 완료된 상태입니다 (`app/clients/korean_air_client.py`).
 
 ## 수동 실행 (원클릭 대신)
 
