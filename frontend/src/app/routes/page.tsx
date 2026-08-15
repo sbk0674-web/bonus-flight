@@ -13,6 +13,7 @@ function RoutesPageInner() {
   const { dep, month, outbound, setPendingDest, setReturnMonth } = useSearchStore()
   const [routeList, setRouteList] = useState<RouteOption[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const [selectedReturnMonth, setSelectedReturnMonth] = useState('')
 
   useEffect(() => {
@@ -24,8 +25,11 @@ function RoutesPageInner() {
       router.replace('/')
       return
     }
+    setLoading(true)
+    setError(null)
     fetchRoutes(dep, month)
       .then(setRouteList)
+      .catch((e: Error) => setError(e.message))
       .finally(() => setLoading(false))
   }, [dep, month, leg, outbound, router])
 
@@ -48,6 +52,7 @@ function RoutesPageInner() {
           type="month"
           className="border rounded p-2"
           value={selectedReturnMonth}
+          min={outbound?.date?.slice(0, 7)}
           onChange={(e) => setSelectedReturnMonth(e.target.value)}
         />
         <button
@@ -62,6 +67,7 @@ function RoutesPageInner() {
   }
 
   if (loading) return <p className="p-8">불러오는 중...</p>
+  if (error) return <p className="p-8 text-red-600">{error}</p>
 
   return (
     <main className="flex flex-col gap-2 p-8">

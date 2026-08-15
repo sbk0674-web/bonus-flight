@@ -17,8 +17,8 @@ function CalendarPageInner() {
   const [error, setError] = useState<string | null>(null)
 
   const dep = leg === 'outbound' ? store.dep : store.outbound?.dest ?? null
-  const dest = leg === 'outbound' ? store.pendingDest : store.dep
-  const month = leg === 'outbound' ? store.month : store.pendingDest ? store.returnMonth : null
+  const dest = leg === 'outbound' ? store.pendingDest : store.outbound?.dep ?? null
+  const month = leg === 'outbound' ? store.month : store.outbound ? store.returnMonth : null
 
   useEffect(() => {
     if (!dep || !dest || !month) {
@@ -38,7 +38,6 @@ function CalendarPageInner() {
     const legSelection = { dep, dest, month, date, flight }
     if (leg === 'outbound') {
       store.setOutbound(legSelection)
-      store.setPendingDest(dep) // 리턴 노선 화면에서 도착지가 원래 출발지로 고정되도록
       router.push('/routes?leg=inbound')
     } else {
       store.setInbound(legSelection)
