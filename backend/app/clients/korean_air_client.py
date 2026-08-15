@@ -8,10 +8,11 @@ from app.models.schemas import CalendarDay, FlightOption, SeatCounts
 SESSION_TTL_SECONDS = 15 * 60
 LOGIN_URL = "https://www.koreanair.com/korea/ko.html"
 
-# Task 3 스파이크 결과로 확정되면 실제 값으로 교체
-SELECTOR_ID_INPUT = "input[name=userId]"
-SELECTOR_PW_INPUT = "input[name=userPw]"
-SELECTOR_LOGIN_SUBMIT = "button[type=submit]"
+# 로그인 성공 여부를 판단하는 마커. 대한항공은 네이버 등 소셜 로그인도 지원해서
+# 아이디/비번 자동입력 대신 사용자가 브라우저에서 직접 로그인하고, 이 마커가
+# 뜨면 로그인 완료로 간주한다. Task 3 스파이크 결과로 확정되면 실제 값으로 교체.
+LOGIN_SUCCESS_MARKER = "text=로그아웃"
+LOGIN_WAIT_TIMEOUT_MS = 5 * 60 * 1000  # 사용자가 직접 로그인할 시간 (5분)
 
 CALENDAR_API_PATH = "/api/booking/award-calendar"  # Task 3 스파이크 결과로 확정 필요
 
@@ -57,17 +58,15 @@ class AntiBotDetectedError(Exception):
 
 
 class KoreanAirClient:
-    """대한항공 로그인 세션을 유지하며 마일리지 좌석 정보를 조회하는 클라이언트."""
+    """대한항공 로그인 세션을 유지하며 마일리지 좌석 정보를 조회하는 클라이언트.
 
-    def __init__(self, user_id: str, password: str) -> None:
-        """자격증명을 받아 클라이언트를 만든다.
+    대한항공은 네이버 등 소셜 로그인을 지원하므로 아이디/비번을 저장해
+    자동입력하지 않는다. 대신 headed(화면 보이는) 브라우저를 띄우고, 사용자가
+    직접 로그인을 완료할 때까지 기다린다.
+    """
 
-        Args:
-            user_id: 대한항공 SKYPASS 아이디.
-            password: 대한항공 SKYPASS 비밀번호.
-        """
-        self._user_id = user_id
-        self._password = password
+    def __init__(self) -> None:
+        """자격증명 없이 클라이언트를 만든다 (로그인은 매번 사용자가 직접 진행)."""
         self._session_expires_at: float | None = None
         self._browser: Browser | None = None
         self._page: Page | None = None
@@ -79,18 +78,19 @@ class KoreanAirClient:
         return time.time() < self._session_expires_at
 
     async def ensure_logged_in(self) -> None:
-        """세션이 없거나 만료됐으면 로그인하고, 유효하면 아무것도 하지 않는다.
+        """세션이 없거나 만료됐으면 브라우저를 띄우고 사용자의 직접 로그인을 기다린다.
+
+        유효한 세션이 있으면 아무것도 하지 않는다.
 
         Raises:
-            KoreanAirLoginError: 로그인 실패.
-            AntiBotDetectedError: 로그인 과정에서 캡차/봇 탐지가 감지된 경우.
+            KoreanAirLoginError: 로그인 대기 시간(5분) 안에 로그인이 완료되지 않은 경우.
         """
         if self._is_session_valid():
             return
 
         if self._browser is None:
             playwright = await async_playwright().start()
-            self._browser = await playwright.chromium.launch(headless=True)
+            self._browser = await playwright.chromium.launch(headless=False)
             self._page = await self._browser.new_page()
 
         assert self._page is not None
@@ -98,18 +98,19 @@ class KoreanAirClient:
         try:
             await self._page.goto(LOGIN_URL)
 
-            if await self._page.locator("text=자동입력 방지").count() > 0:
-                raise AntiBotDetectedError("로그인 페이지에서 봇 탐지 감지")
-
-            await self._page.fill(SELECTOR_ID_INPUT, self._user_id)
-            await self._page.fill(SELECTOR_PW_INPUT, self._password)
-            await self._page.click(SELECTOR_LOGIN_SUBMIT)
+            if await self._page.locator(LOGIN_SUCCESS_MARKER).count() > 0:
+                self._session_expires_at = time.time() + SESSION_TTL_SECONDS
+                return
 
             try:
-                await self._page.wait_for_selector("text=로그아웃", timeout=10_000)
+                await self._page.wait_for_selector(
+                    LOGIN_SUCCESS_MARKER, timeout=LOGIN_WAIT_TIMEOUT_MS
+                )
             except Exception as exc:
-                raise KoreanAirLoginError("로그인 실패: 자격증명 또는 페이지 구조 확인 필요") from exc
-        except (AntiBotDetectedError, KoreanAirLoginError):
+                raise KoreanAirLoginError(
+                    "로그인 대기 시간 초과: 뜬 브라우저 창에서 직접 로그인해주세요"
+                ) from exc
+        except KoreanAirLoginError:
             # 로그인 실패 시 브라우저/페이지를 오염된 상태로 남겨두지 않는다.
             # 다음 ensure_logged_in() 호출(예: 서비스 레이어의 재시도)이
             # 완전히 새로운 브라우저로 시작하도록 내부 상태를 초기화한다.

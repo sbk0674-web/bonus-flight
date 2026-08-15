@@ -1,13 +1,11 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-import Link from 'next/link'
+import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { fetchSettingsStatus } from '@/lib/api'
 import { useSearchStore } from '@/stores/useSearchStore'
 
 const DOMESTIC_AIRPORTS = [
@@ -28,13 +26,6 @@ export default function DeparturePage() {
   const setDeparture = useSearchStore((s) => s.setDeparture)
   const [dep, setDep] = useState('')
   const [month, setMonth] = useState('')
-  const [configured, setConfigured] = useState<boolean | null>(null)
-
-  useEffect(() => {
-    fetchSettingsStatus()
-      .then((status) => setConfigured(status.configured))
-      .catch(() => setConfigured(null))
-  }, [])
 
   const canSearch = dep !== '' && month !== ''
 
@@ -51,14 +42,10 @@ export default function DeparturePage() {
           <CardDescription>출발 공항과 월을 골라주세요</CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
-          {configured === false && (
-            <p className="text-sm text-destructive">
-              대한항공 계정이 설정되지 않았습니다.{' '}
-              <Link href="/settings" className="underline">
-                설정 화면으로 이동
-              </Link>
-            </p>
-          )}
+          <p className="text-sm text-muted-foreground">
+            좌석 조회 버튼을 누르면 브라우저 창이 하나 열립니다. 그 창에서 직접 대한항공에
+            로그인(네이버 등 소셜 로그인 포함)해주세요.
+          </p>
 
           <div className="flex flex-col gap-1.5">
             <label className="text-sm font-medium">출발 공항</label>
@@ -84,10 +71,6 @@ export default function DeparturePage() {
           <Button disabled={!canSearch} onClick={handleSearch} className="mt-2">
             조회
           </Button>
-
-          <Link href="/settings" className="text-center text-sm text-muted-foreground underline">
-            계정 설정
-          </Link>
         </CardContent>
       </Card>
     </main>

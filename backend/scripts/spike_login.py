@@ -1,13 +1,13 @@
 """대한항공 마일리지 로그인+좌석조회 흐름 조사용 스파이크 스크립트.
 
-사람이 직접 headed 모드로 실행해서 로그인 → 마일리지 예매 토글 → 좌석 조회까지
-수동으로 진행하며 각 단계 DOM/네트워크를 tmp/ 에 덤프한다. 이 결과를 보고
-Task 4, 5의 실제 셀렉터/API 응답 구조를 확정한다.
+사람이 직접 headed 모드로 실행해서 로그인(네이버 등 소셜 로그인 포함) →
+마일리지 예매 토글 → 좌석 조회까지 수동으로 진행하며 각 단계 DOM/네트워크를
+tmp/ 에 덤프한다. 이 결과를 보고 KoreanAirClient의 LOGIN_SUCCESS_MARKER,
+CALENDAR_API_PATH 등 플레이스홀더 값을 확정한다.
 
-실행: KOREANAIR_ID=xxx KOREANAIR_PW=xxx python scripts/spike_login.py
+실행: python scripts/spike_login.py
 """
 import json
-import os
 from pathlib import Path
 
 from playwright.sync_api import sync_playwright
@@ -31,8 +31,7 @@ def main() -> None:
     )
     page.goto("https://www.koreanair.com/korea/ko.html")
 
-    print("브라우저에서 직접 로그인 → 마일리지 예매 토글 → 좌석 조회까지 진행하세요.")
-    print(f"KOREANAIR_ID={os.environ.get('KOREANAIR_ID', '(미설정)')}")
+    print("브라우저에서 직접 로그인(네이버 등 소셜 로그인 포함) → 마일리지 예매 토글 → 좌석 조회까지 진행하세요.")
     input("다 끝나면 Enter를 누르세요 (그 시점 DOM/네트워크를 덤프합니다)...")
 
     (TMP_DIR / "spike_dom_dump.html").write_text(page.content(), encoding="utf-8")
