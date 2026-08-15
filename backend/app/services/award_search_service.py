@@ -29,7 +29,12 @@ class AwardSearchService:
         self._client = client
 
     async def search_calendar(self, dep: str, dest: str, month: str) -> list[CalendarDay]:
-        """캘린더를 조회한다. 로그인 실패는 1회 재시도, 봇 탐지는 즉시 중단한다.
+        """캘린더를 조회한다.
+
+        로그인은 사용자가 headed 브라우저에서 직접 진행하므로 여기서 자동
+        재시도하지 않는다 (재시도하면 대기 시간이 배로 늘어나고 브라우저 창이
+        하나 더 뜨는 혼란만 생긴다). 실패하면 사용자가 프론트에서 직접
+        "조회"를 다시 눌러 새로 시도한다.
 
         Args:
             dep: 출발 공항 코드.
@@ -40,7 +45,7 @@ class AwardSearchService:
             좌석이 있는 날짜만 담긴 CalendarDay 리스트.
 
         Raises:
-            ScrapeFailedError: 재시도까지 실패하거나 봇 탐지가 감지된 경우.
+            ScrapeFailedError: 조회 실패 시.
         """
         try:
             return await self._client.fetch_calendar(dep, dest, month)
@@ -48,20 +53,9 @@ class AwardSearchService:
             raise ScrapeFailedError(
                 "봇 탐지로 조회 중단", user_message="잠시 후 다시 시도해주세요"
             ) from exc
-        except KoreanAirLoginError:
-            pass
-        except Exception as exc:  # 파싱 실패, 타임아웃 등 그 외 모든 예외의 최종 안전망
-            raise ScrapeFailedError(f"조회 중 알 수 없는 오류: {exc}") from exc
-
-        try:
-            return await self._client.fetch_calendar(dep, dest, month)
         except KoreanAirLoginError as exc:
             raise ScrapeFailedError(
-                "재시도 후에도 로그인 실패", user_message="대한항공 로그인 실패"
-            ) from exc
-        except AntiBotDetectedError as exc:
-            raise ScrapeFailedError(
-                "재시도 중 봇 탐지로 조회 중단", user_message="잠시 후 다시 시도해주세요"
+                "로그인 대기 시간 초과", user_message="대한항공 로그인 실패"
             ) from exc
         except Exception as exc:  # 파싱 실패, 타임아웃 등 그 외 모든 예외의 최종 안전망
-            raise ScrapeFailedError(f"재시도 후에도 조회 중 알 수 없는 오류: {exc}") from exc
+            raise ScrapeFailedError(f"조회 중 알 수 없는 오류: {exc}") from exc

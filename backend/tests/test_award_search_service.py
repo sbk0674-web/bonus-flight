@@ -21,33 +21,19 @@ async def test_search_calendar_returns_client_result_on_success():
 
 
 @pytest.mark.asyncio
-async def test_search_calendar_retries_once_on_login_error():
-    """로그인 에러 발생 시 1회 재시도하고, 재시도가 성공하면 결과를 반환한다."""
+async def test_search_calendar_does_not_retry_on_login_error():
+    """로그인 실패(사용자가 headed 브라우저에서 제시간에 로그인 못함)는 재시도하지 않는다.
+
+    재시도하면 5분 대기가 배로 늘어나고 브라우저 창이 하나 더 뜨는 혼란만 생긴다.
+    """
     mock_client = AsyncMock()
-    mock_client.fetch_calendar.side_effect = [
-        KoreanAirLoginError("세션 만료"),
-        [CalendarDay(date="2026-09-10", flights=[])],
-    ]
-    service = AwardSearchService(client=mock_client)
-
-    result = await service.search_calendar("ICN", "NRT", "2026-09")
-
-    assert result == [CalendarDay(date="2026-09-10", flights=[])]
-    assert mock_client.fetch_calendar.call_count == 2
-
-
-@pytest.mark.asyncio
-async def test_search_calendar_raises_scrape_failed_after_retry_fails_too():
-    """재시도까지 실패하면 ScrapeFailedError로 변환해서 던진다."""
-    mock_client = AsyncMock()
-    mock_client.fetch_calendar.side_effect = [
-        KoreanAirLoginError("세션 만료"),
-        KoreanAirLoginError("또 실패"),
-    ]
+    mock_client.fetch_calendar.side_effect = KoreanAirLoginError("로그인 대기 시간 초과")
     service = AwardSearchService(client=mock_client)
 
     with pytest.raises(ScrapeFailedError):
         await service.search_calendar("ICN", "NRT", "2026-09")
+
+    assert mock_client.fetch_calendar.call_count == 1
 
 
 @pytest.mark.asyncio
@@ -64,13 +50,10 @@ async def test_search_calendar_does_not_retry_on_anti_bot_detection():
 
 
 @pytest.mark.asyncio
-async def test_search_calendar_raises_login_failed_message_when_retry_also_fails():
-    """재시도까지 로그인 실패하면 사용자 메시지가 '대한항공 로그인 실패'여야 한다."""
+async def test_search_calendar_raises_login_failed_message():
+    """로그인 실패 시 사용자 메시지가 '대한항공 로그인 실패'여야 한다."""
     mock_client = AsyncMock()
-    mock_client.fetch_calendar.side_effect = [
-        KoreanAirLoginError("세션 만료"),
-        KoreanAirLoginError("재시도도 로그인 실패"),
-    ]
+    mock_client.fetch_calendar.side_effect = KoreanAirLoginError("로그인 대기 시간 초과")
     service = AwardSearchService(client=mock_client)
 
     with pytest.raises(ScrapeFailedError) as exc_info:

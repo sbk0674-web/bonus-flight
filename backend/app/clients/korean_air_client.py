@@ -1,5 +1,7 @@
 """대한항공 사이트 로그인 및 좌석 조회를 담당하는 Playwright 클라이언트."""
+import asyncio
 import time
+from pathlib import Path
 
 from playwright.async_api import Browser, Page, async_playwright
 
@@ -7,12 +9,26 @@ from app.models.schemas import CalendarDay, FlightOption, SeatCounts
 
 SESSION_TTL_SECONDS = 15 * 60
 LOGIN_URL = "https://www.koreanair.com/korea/ko.html"
+GOTO_TIMEOUT_MS = 30 * 1000
 
-# 로그인 성공 여부를 판단하는 마커. 대한항공은 네이버 등 소셜 로그인도 지원해서
-# 아이디/비번 자동입력 대신 사용자가 브라우저에서 직접 로그인하고, 이 마커가
-# 뜨면 로그인 완료로 간주한다. Task 3 스파이크 결과로 확정되면 실제 값으로 교체.
-LOGIN_SUCCESS_MARKER = "text=로그아웃"
+# 로그인 성공 여부 판단: 로그인 전 헤더에는 "로그인" 버튼이 정확히 이 텍스트로
+# 떠 있다 (실사로 확인됨, 2026-08-15 스크린샷). 로그인하면 이 버튼이 사라지므로
+# "로그인" 텍스트가 없어지는 시점을 로그인 완료로 간주한다.
+LOGIN_BUTTON_TEXT = "로그인"
 LOGIN_WAIT_TIMEOUT_MS = 5 * 60 * 1000  # 사용자가 직접 로그인할 시간 (5분)
+
+DEBUG_DUMP_DIR = Path(__file__).parent.parent.parent / "tmp"
+
+
+async def _dump_debug_state(page: Page, label: str) -> None:
+    """실패 시점의 페이지 상태를 tmp/에 덤프한다 (원인 진단용, 실패해도 무시)."""
+    try:
+        DEBUG_DUMP_DIR.mkdir(exist_ok=True)
+        await page.screenshot(path=str(DEBUG_DUMP_DIR / f"{label}.png"))
+        (DEBUG_DUMP_DIR / f"{label}.html").write_text(await page.content(), encoding="utf-8")
+        (DEBUG_DUMP_DIR / f"{label}_url.txt").write_text(page.url, encoding="utf-8")
+    except Exception:
+        pass
 
 CALENDAR_API_PATH = "/api/booking/award-calendar"  # Task 3 스파이크 결과로 확정 필요
 
@@ -70,6 +86,9 @@ class KoreanAirClient:
         self._session_expires_at: float | None = None
         self._browser: Browser | None = None
         self._page: Page | None = None
+        # 브라우저/페이지 하나를 여러 요청이 동시에 공유하므로, 겹치는 요청이
+        # 서로의 페이지 상태를 오염시키지 않도록 한 번에 하나씩만 처리한다.
+        self._lock = asyncio.Lock()
 
     def _is_session_valid(self) -> bool:
         """캐싱된 세션이 아직 TTL 안인지 판단한다."""
@@ -96,24 +115,38 @@ class KoreanAirClient:
         assert self._page is not None
 
         try:
-            await self._page.goto(LOGIN_URL)
+            await self._page.goto(LOGIN_URL, timeout=GOTO_TIMEOUT_MS)
 
-            if await self._page.locator(LOGIN_SUCCESS_MARKER).count() > 0:
+            # Angular SPA라 헤더가 늦게 하이드레이션된다. 로그인 버튼 유무를
+            # 판단하기 전에 항상 뜨는 요소(마일리지 예매 토글)로 렌더 완료를 기다린다.
+            await self._page.wait_for_selector("text=마일리지 예매", timeout=GOTO_TIMEOUT_MS)
+
+            # 쿠키 동의 배너가 로그인 버튼을 가리는 경우가 있어 자동으로 닫는다.
+            try:
+                await self._page.get_by_text("동의합니다", exact=True).click(timeout=5_000)
+            except Exception:
+                pass
+
+            login_button = self._page.get_by_text(LOGIN_BUTTON_TEXT, exact=True)
+            if await login_button.count() == 0:
+                # 이미 로그인 버튼이 안 보임 = 이미 로그인된 상태
                 self._session_expires_at = time.time() + SESSION_TTL_SECONDS
                 return
 
             try:
-                await self._page.wait_for_selector(
-                    LOGIN_SUCCESS_MARKER, timeout=LOGIN_WAIT_TIMEOUT_MS
-                )
+                await login_button.first.wait_for(state="detached", timeout=LOGIN_WAIT_TIMEOUT_MS)
             except Exception as exc:
+                await _dump_debug_state(self._page, "login_timeout")
                 raise KoreanAirLoginError(
                     "로그인 대기 시간 초과: 뜬 브라우저 창에서 직접 로그인해주세요"
                 ) from exc
-        except KoreanAirLoginError:
-            # 로그인 실패 시 브라우저/페이지를 오염된 상태로 남겨두지 않는다.
-            # 다음 ensure_logged_in() 호출(예: 서비스 레이어의 재시도)이
-            # 완전히 새로운 브라우저로 시작하도록 내부 상태를 초기화한다.
+        except Exception:
+            # 어떤 이유로든 로그인이 실패하면 원인 진단을 위해 그 시점 상태를 덤프하고,
+            # 브라우저/페이지를 오염된 상태로 남겨두지 않는다. 다음 ensure_logged_in()
+            # 호출(예: 서비스 레이어의 재시도)이 완전히 새로운 브라우저로 시작하도록
+            # 내부 상태를 초기화한다.
+            if self._page is not None:
+                await _dump_debug_state(self._page, "ensure_logged_in_failure")
             await self.close()
             self._page = None
             raise
@@ -134,18 +167,19 @@ class KoreanAirClient:
         Raises:
             AntiBotDetectedError: 조회 중 봇 탐지 감지 시.
         """
-        await self.ensure_logged_in()
-        assert self._page is not None
+        async with self._lock:
+            await self.ensure_logged_in()
+            assert self._page is not None
 
-        response = await self._page.request.get(
-            CALENDAR_API_PATH,
-            params={"dep": dep, "dest": dest, "month": month},
-        )
-        if response.status == 403:
-            raise AntiBotDetectedError("캘린더 조회 중 봇 탐지 감지")
+            response = await self._page.request.get(
+                CALENDAR_API_PATH,
+                params={"dep": dep, "dest": dest, "month": month},
+            )
+            if response.status == 403:
+                raise AntiBotDetectedError("캘린더 조회 중 봇 탐지 감지")
 
-        raw = await response.json()
-        return parse_calendar_response(raw)
+            raw = await response.json()
+            return parse_calendar_response(raw)
 
     async def close(self) -> None:
         """브라우저를 종료한다."""
