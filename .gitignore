@@ -7,3 +7,4 @@ node_modules/
 backend/.env
 backend/tmp/
 *.egg-info/
+backend/credentials.json

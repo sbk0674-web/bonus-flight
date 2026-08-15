@@ -1,11 +1,10 @@
 """좌석 캘린더 조회 라우터."""
-import os
-
 from fastapi import APIRouter, Depends, HTTPException
 
 from app.clients.korean_air_client import KoreanAirClient
 from app.models.schemas import CalendarDay, CalendarRequest
 from app.services.award_search_service import AwardSearchService, ScrapeFailedError
+from app.services.credentials_store import get_credentials
 
 router = APIRouter()
 
@@ -13,13 +12,21 @@ _client_singleton: KoreanAirClient | None = None
 
 
 def get_award_search_service() -> AwardSearchService:
-    """AwardSearchService를 만든다. 클라이언트는 프로세스 내에서 재사용한다."""
+    """AwardSearchService를 만든다. 클라이언트는 프로세스 내에서 재사용한다.
+
+    Raises:
+        HTTPException: 설정 화면에서 자격증명을 입력하지 않은 경우 400.
+    """
     global _client_singleton
     if _client_singleton is None:
-        _client_singleton = KoreanAirClient(
-            user_id=os.environ["KOREANAIR_ID"],
-            password=os.environ["KOREANAIR_PW"],
-        )
+        credentials = get_credentials()
+        if credentials is None:
+            raise HTTPException(
+                status_code=400,
+                detail="대한항공 계정이 설정되지 않았습니다. 설정 화면에서 아이디/비밀번호를 입력해주세요.",
+            )
+        koreanair_id, koreanair_pw = credentials
+        _client_singleton = KoreanAirClient(user_id=koreanair_id, password=koreanair_pw)
     return AwardSearchService(client=_client_singleton)
 
 

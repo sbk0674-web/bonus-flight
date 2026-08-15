@@ -39,3 +39,17 @@ class CalendarRequest(BaseModel):
     dep: str
     dest: str
     month: str
+
+
+class SettingsStatus(BaseModel):
+    """GET /api/settings 응답. 비밀번호는 절대 포함하지 않는다."""
+
+    configured: bool
+    koreanair_id: str | None = None
+
+
+class SettingsRequest(BaseModel):
+    """POST /api/settings 요청 바디."""
+
+    koreanair_id: str
+    koreanair_pw: str
