@@ -52,6 +52,10 @@ export default function SummaryPage() {
     <main className="flex min-h-screen flex-col items-center justify-center gap-4 bg-background p-6">
       <div className="flex w-full max-w-sm flex-col gap-4">
         <h1 className="text-center text-lg font-medium">왕복 조회 결과</h1>
+        <p className="rounded-md bg-muted p-3 text-xs text-muted-foreground">
+          ⚠️ 하루 1회 업데이트되는 데이터라 실제로는 매진일 수 있습니다. 예약 전 대한항공
+          사이트에서 반드시 다시 확인해주세요.
+        </p>
         <LegSummary title="가는편" leg={outbound} />
         <LegSummary title="오는편" leg={inbound} />
         <Button onClick={handleRestart}>다시 조회</Button>

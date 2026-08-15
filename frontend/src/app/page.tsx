@@ -46,6 +46,10 @@ export default function DeparturePage() {
             좌석 조회 버튼을 누르면 브라우저 창이 하나 열립니다. 그 창에서 직접 대한항공에
             로그인(네이버 등 소셜 로그인 포함)해주세요.
           </p>
+          <p className="rounded-md bg-muted p-3 text-xs text-muted-foreground">
+            ⚠️ 대한항공 좌석 데이터는 실시간이 아니라 <strong>하루 1회 업데이트</strong>됩니다.
+            실제 예약 가능 여부는 대한항공 사이트에서 한 번 더 확인해주세요.
+          </p>
 
           <div className="flex flex-col gap-1.5">
             <label className="text-sm font-medium">출발 공항</label>

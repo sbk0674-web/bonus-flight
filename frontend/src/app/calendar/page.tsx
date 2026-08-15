@@ -71,6 +71,10 @@ function CalendarPageInner() {
   return (
     <main className="flex min-h-screen flex-col items-center gap-4 bg-background p-6">
       <h1 className="text-lg font-medium">{leg === 'outbound' ? '가는편' : '오는편'} 선택</h1>
+      <p className="w-full max-w-md rounded-md bg-muted p-3 text-xs text-muted-foreground">
+        ⚠️ 하루 1회 업데이트되는 데이터입니다. 실시간 현황이 아니므로 실제 예약 가능 여부는
+        대한항공 사이트에서 한 번 더 확인해주세요.
+      </p>
       <CalendarView days={visibleDays} onSelectFlight={handleSelectFlight} />
     </main>
   )
