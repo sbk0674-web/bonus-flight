@@ -58,4 +58,5 @@ class AwardSearchService:
                 "로그인 대기 시간 초과", user_message="대한항공 로그인 실패"
             ) from exc
         except Exception as exc:  # 파싱 실패, 타임아웃 등 그 외 모든 예외의 최종 안전망
+            print(f"[AwardSearchService] 알 수 없는 오류: {type(exc).__name__}: {exc}", flush=True)
             raise ScrapeFailedError(f"조회 중 알 수 없는 오류: {exc}") from exc

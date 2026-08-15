@@ -207,7 +207,7 @@ class KoreanAirClient:
             year, mon = month.split("-")
             departure_date = f"{year}{mon}01"  # bonusSeatView는 그 달 1일 기준으로 한 달치를 돌려줌
             response = await self._page.request.post(
-                CALENDAR_API_PATH,
+                f"https://www.koreanair.com{CALENDAR_API_PATH}",
                 data={
                     "departureAirport": dep,
                     "arrivalAirport": dest,
