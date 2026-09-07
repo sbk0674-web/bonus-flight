@@ -9,6 +9,9 @@ export type FlightOption = {
   depTime: string
   arrTime: string
   seats: SeatCounts
+  operatorCode: string | null
+  operatorName: string | null
+  codeShare: boolean
 }
 
 export type CalendarDay = {

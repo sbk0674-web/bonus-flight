@@ -17,6 +17,9 @@ class FlightOption(BaseModel):
     dep_time: str
     arr_time: str
     seats: SeatCounts
+    operator_code: str | None = None
+    operator_name: str | None = None
+    code_share: bool = False
 
 
 class CalendarDay(BaseModel):
@@ -39,3 +42,28 @@ class CalendarRequest(BaseModel):
     dep: str
     dest: str
     month: str
+
+
+class AwardPriceRequest(BaseModel):
+    """POST /api/award-price 요청 바디. 왕복 최종 선택 시점에 1번만 호출."""
+
+    dep: str
+    dest: str
+    outbound_date: str
+    outbound_flight_no: str
+    inbound_date: str
+    inbound_flight_no: str
+
+
+class LegPrice(BaseModel):
+    """편도 1개의 소요 마일리지/운임."""
+
+    mileage: int
+    fare_krw: int
+
+
+class AwardPriceResponse(BaseModel):
+    """POST /api/award-price 응답. 못 찾으면 라우터가 404를 돌려준다."""
+
+    outbound: LegPrice
+    inbound: LegPrice

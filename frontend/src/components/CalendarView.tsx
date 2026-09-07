@@ -9,14 +9,22 @@ type Props = {
   onSelectFlight: (date: string, flight: FlightOption) => void
 }
 
+function hasAvailableSeats(flight: FlightOption): boolean {
+  return flight.seats.economy > 0 || flight.seats.business > 0 || flight.seats.first > 0
+}
+
 export function CalendarView({ days, onSelectFlight }: Props) {
-  if (days.length === 0) {
+  const availableDays = days
+    .map((day) => ({ ...day, flights: day.flights.filter(hasAvailableSeats) }))
+    .filter((day) => day.flights.length > 0)
+
+  if (availableDays.length === 0) {
     return <p className="text-sm text-muted-foreground">이 달에는 좌석이 있는 날짜가 없습니다.</p>
   }
 
   return (
     <div className="flex w-full max-w-md flex-col gap-3">
-      {days.map((day) => (
+      {availableDays.map((day) => (
         <Card key={day.date}>
           <CardHeader>
             <CardTitle className="text-sm">{day.date}</CardTitle>
@@ -24,10 +32,12 @@ export function CalendarView({ days, onSelectFlight }: Props) {
           <CardContent className="flex flex-col gap-2">
             {day.flights.map((flight) => {
               const availableClasses = [
-                flight.seats.economy > 0 && '이코노미',
-                flight.seats.business > 0 && '비즈니스',
-                flight.seats.first > 0 && '일등석',
+                flight.seats.economy > 0 && `일반석 ${flight.seats.economy}석`,
+                flight.seats.business > 0 && `프레스티지석 ${flight.seats.business}석`,
+                flight.seats.first > 0 && `일등석 ${flight.seats.first}석`,
               ].filter(Boolean)
+              const operatorNote =
+                flight.codeShare && flight.operatorName ? ` · ${flight.operatorName} 운항` : ''
               return (
                 <Button
                   key={`${flight.flightNo}-${flight.depTime}`}
@@ -35,7 +45,8 @@ export function CalendarView({ days, onSelectFlight }: Props) {
                   className="h-auto w-full justify-start whitespace-normal py-2 text-left text-sm"
                   onClick={() => onSelectFlight(day.date, flight)}
                 >
-                  {flight.flightNo} {flight.depTime} 출발 | {availableClasses.join(' · ')} 가능
+                  {flight.flightNo} {flight.depTime} 출발 | {availableClasses.join(' · ')}
+                  {operatorNote}
                 </Button>
               )
             })}

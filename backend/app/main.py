@@ -15,7 +15,11 @@ from app.routers import calendar, routes  # noqa: E402
 app = FastAPI(title="krean-mileage-backend")
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],
+    allow_origins=[
+        "http://localhost:3000",
+        "https://bonusflight.vercel.app",
+    ],
+    allow_origin_regex=r"https://bonusflight-.*\.vercel\.app",
     allow_methods=["*"],
     allow_headers=["*"],
 )

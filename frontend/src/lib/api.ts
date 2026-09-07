@@ -19,6 +19,9 @@ type RawFlightOption = {
   dep_time: string
   arr_time: string
   seats: RawSeatCounts
+  operator_code: string | null
+  operator_name: string | null
+  code_share: boolean
 }
 
 type RawCalendarDay = {
@@ -58,6 +61,9 @@ export async function fetchCalendar(dep: string, dest: string, month: string): P
       depTime: f.dep_time,
       arrTime: f.arr_time,
       seats: f.seats,
+      operatorCode: f.operator_code,
+      operatorName: f.operator_name,
+      codeShare: f.code_share,
     })),
   }))
 }

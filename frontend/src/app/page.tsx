@@ -2,23 +2,23 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { AdSlot } from '@/components/AdSlot'
+import { BrandHeader } from '@/components/BrandHeader'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { getNextMonthOptions } from '@/lib/month-options'
 import { useSearchStore } from '@/stores/useSearchStore'
 
+const MONTH_OPTIONS = getNextMonthOptions()
+
+// 대한항공 국제선(마일리지 보너스) 취항 국내공항만 포함. 대구/청주/광주/울산/여수/포항 등은
+// 국내선만 운항해 국제선 목적지가 없으므로 제외 (getRouteByAirport API 실사 확인, 2026-08-16).
 const DOMESTIC_AIRPORTS = [
   { code: 'ICN', name: '인천' },
   { code: 'GMP', name: '김포' },
   { code: 'PUS', name: '부산(김해)' },
   { code: 'CJU', name: '제주' },
-  { code: 'TAE', name: '대구' },
-  { code: 'CJJ', name: '청주' },
-  { code: 'KWJ', name: '광주' },
-  { code: 'USN', name: '울산' },
-  { code: 'RSU', name: '여수' },
-  { code: 'KPO', name: '포항경주' },
 ]
 
 export default function DeparturePage() {
@@ -35,8 +35,9 @@ export default function DeparturePage() {
   }
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-background p-6">
-      <Card className="w-full max-w-sm">
+    <main className="flex min-h-screen flex-col items-center justify-center gap-4 bg-background p-6">
+      <BrandHeader />
+      <Card className="w-full max-w-sm border-[var(--border)] shadow-sm">
         <CardHeader>
           <CardTitle className="text-lg">대한항공 마일리지 좌석 조회</CardTitle>
           <CardDescription>출발 공항과 월을 골라주세요</CardDescription>
@@ -69,14 +70,41 @@ export default function DeparturePage() {
 
           <div className="flex flex-col gap-1.5">
             <label className="text-sm font-medium">출발월</label>
-            <Input type="month" value={month} onChange={(e) => setMonth(e.target.value)} />
+            <Select value={month} onValueChange={(value) => setMonth(value as string)}>
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="출발월 선택" />
+              </SelectTrigger>
+              <SelectContent>
+                {MONTH_OPTIONS.map((m) => (
+                  <SelectItem key={m.value} value={m.value}>
+                    {m.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           <Button disabled={!canSearch} onClick={handleSearch} className="mt-2">
             조회
           </Button>
+          <a
+            href="https://www.koreanair.com"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-center text-xs text-muted-foreground underline underline-offset-2"
+          >
+            대한항공 홈페이지 바로가기
+          </a>
+          <button
+            type="button"
+            onClick={() => router.push('/booking-class')}
+            className="text-center text-xs text-muted-foreground underline underline-offset-2"
+          >
+            최저가 항공권 찾기
+          </button>
         </CardContent>
       </Card>
+      <AdSlot />
     </main>
   )
 }

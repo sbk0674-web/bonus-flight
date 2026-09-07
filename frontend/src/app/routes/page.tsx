@@ -2,10 +2,13 @@
 
 import { Suspense, useEffect, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
+import { BackButton } from '@/components/BackButton'
+import { BrandHeader } from '@/components/BrandHeader'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Input } from '@/components/ui/input'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { fetchRoutes } from '@/lib/api'
+import { getNextMonthOptions } from '@/lib/month-options'
 import { useSearchStore } from '@/stores/useSearchStore'
 import type { RouteOption } from '@/types/award'
 
@@ -49,18 +52,28 @@ function RoutesPageInner() {
 
   if (leg === 'inbound') {
     return (
-      <main className="flex min-h-screen items-center justify-center bg-background p-6">
+      <main className="flex min-h-screen flex-col items-center justify-center gap-2 bg-background p-6">
+        <BrandHeader />
+        <div className="w-full max-w-sm">
+          <BackButton />
+        </div>
         <Card className="w-full max-w-sm">
           <CardHeader>
             <CardTitle className="text-lg">오는편 - 돌아오는 월 선택</CardTitle>
           </CardHeader>
           <CardContent className="flex flex-col gap-4">
-            <Input
-              type="month"
-              value={selectedReturnMonth}
-              min={outbound?.date?.slice(0, 7)}
-              onChange={(e) => setSelectedReturnMonth(e.target.value)}
-            />
+            <Select value={selectedReturnMonth} onValueChange={(value) => setSelectedReturnMonth(value as string)}>
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="돌아오는 월 선택" />
+              </SelectTrigger>
+              <SelectContent>
+                {getNextMonthOptions(outbound?.date?.slice(0, 7)).map((m) => (
+                  <SelectItem key={m.value} value={m.value}>
+                    {m.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
             <Button disabled={!selectedReturnMonth} onClick={handleReturnMonthConfirm}>
               조회
             </Button>
@@ -72,21 +85,37 @@ function RoutesPageInner() {
 
   if (loading) {
     return (
-      <main className="flex min-h-screen items-center justify-center bg-background p-6">
-        <p className="text-muted-foreground">불러오는 중...</p>
+      <main className="flex min-h-screen flex-col items-center justify-center gap-2 bg-background p-6">
+        <BrandHeader />
+        <div className="w-full max-w-sm">
+          <BackButton />
+        </div>
+        <p className="text-center text-sm text-muted-foreground">
+          해당 공항, 선택하신 월에 가능한 노선을 찾고 있습니다...
+          <br />
+          (최대 1분 정도 걸릴 수 있습니다)
+        </p>
       </main>
     )
   }
   if (error) {
     return (
-      <main className="flex min-h-screen items-center justify-center bg-background p-6">
+      <main className="flex min-h-screen flex-col items-center justify-center gap-2 bg-background p-6">
+        <BrandHeader />
+        <div className="w-full max-w-sm">
+          <BackButton />
+        </div>
         <p className="text-destructive">{error}</p>
       </main>
     )
   }
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-background p-6">
+    <main className="flex min-h-screen flex-col items-center justify-center gap-2 bg-background p-6">
+      <BrandHeader />
+      <div className="w-full max-w-sm">
+        <BackButton />
+      </div>
       <Card className="w-full max-w-sm">
         <CardHeader>
           <CardTitle className="text-lg">갈 수 있는 노선</CardTitle>

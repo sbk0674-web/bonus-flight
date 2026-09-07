@@ -2,6 +2,8 @@
 
 import { Suspense, useEffect, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
+import { BackButton } from '@/components/BackButton'
+import { BrandHeader } from '@/components/BrandHeader'
 import { CalendarView } from '@/components/CalendarView'
 import { fetchCalendar } from '@/lib/api'
 import { useSearchStore } from '@/stores/useSearchStore'
@@ -47,7 +49,11 @@ function CalendarPageInner() {
 
   if (loading) {
     return (
-      <main className="flex min-h-screen items-center justify-center bg-background p-6">
+      <main className="flex min-h-screen flex-col items-center justify-center gap-2 bg-background p-6">
+        <BrandHeader />
+        <div className="w-full max-w-md">
+          <BackButton />
+        </div>
         <p className="text-sm text-muted-foreground">
           좌석 조회 중... (수 초~수십 초 걸릴 수 있습니다)
         </p>
@@ -56,7 +62,11 @@ function CalendarPageInner() {
   }
   if (error) {
     return (
-      <main className="flex min-h-screen items-center justify-center bg-background p-6">
+      <main className="flex min-h-screen flex-col items-center justify-center gap-2 bg-background p-6">
+        <BrandHeader />
+        <div className="w-full max-w-md">
+          <BackButton />
+        </div>
         <p className="text-destructive">{error}</p>
       </main>
     )
@@ -70,6 +80,10 @@ function CalendarPageInner() {
 
   return (
     <main className="flex min-h-screen flex-col items-center gap-4 bg-background p-6">
+      <BrandHeader />
+      <div className="w-full max-w-md">
+        <BackButton />
+      </div>
       <h1 className="text-lg font-medium">{leg === 'outbound' ? '가는편' : '오는편'} 선택</h1>
       <p className="w-full max-w-md rounded-md bg-muted p-3 text-xs text-muted-foreground">
         ⚠️ 하루 1회 업데이트되는 데이터입니다. 실시간 현황이 아니므로 실제 예약 가능 여부는

@@ -8,3 +8,4 @@ backend/.env
 backend/tmp/
 *.egg-info/
 backend/credentials.json
+.vercel

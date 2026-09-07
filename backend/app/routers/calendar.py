@@ -2,7 +2,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 
 from app.clients.korean_air_client import KoreanAirClient
-from app.models.schemas import CalendarDay, CalendarRequest
+from app.models.schemas import AwardPriceRequest, AwardPriceResponse, CalendarDay, CalendarRequest
 from app.services.award_search_service import AwardSearchService, ScrapeFailedError
 
 router = APIRouter()
@@ -31,3 +31,22 @@ async def search_calendar(
         return await service.search_calendar(body.dep, body.dest, body.month)
     except ScrapeFailedError as exc:
         raise HTTPException(status_code=502, detail=exc.user_message) from exc
+
+
+@router.post("/api/award-price", response_model=AwardPriceResponse)
+async def search_award_price(
+    body: AwardPriceRequest,
+    service: AwardSearchService = Depends(get_award_search_service),
+) -> AwardPriceResponse:
+    """왕복 최종 선택 시점에 소요 마일리지/운임을 1번만 조회한다 (실패 시 404)."""
+    result = await service.search_award_price(
+        body.dep,
+        body.dest,
+        body.outbound_date,
+        body.outbound_flight_no,
+        body.inbound_date,
+        body.inbound_flight_no,
+    )
+    if result is None:
+        raise HTTPException(status_code=404, detail="마일리지 정보를 가져오지 못했습니다")
+    return AwardPriceResponse(**result)

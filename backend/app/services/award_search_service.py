@@ -60,3 +60,28 @@ class AwardSearchService:
         except Exception as exc:  # 파싱 실패, 타임아웃 등 그 외 모든 예외의 최종 안전망
             print(f"[AwardSearchService] 알 수 없는 오류: {type(exc).__name__}: {exc}", flush=True)
             raise ScrapeFailedError(f"조회 중 알 수 없는 오류: {exc}") from exc
+
+    async def has_route_in_month(self, dep: str, dest: str, month: str) -> bool:
+        """노선 목록 화면에서 그 달에 실제 좌석이 있는 노선만 거를 때 쓴다."""
+        return await self._client.has_route_in_month(dep, dest, month)
+
+    async def search_award_price(
+        self,
+        dep: str,
+        dest: str,
+        outbound_date: str,
+        outbound_flight_no: str,
+        inbound_date: str,
+        inbound_flight_no: str,
+    ) -> dict | None:
+        """왕복 최종 선택 시점의 소요 마일리지/운임을 조회한다.
+
+        부가 정보라 실패해도 예외를 던지지 않고 None을 반환한다 (라우터가 204로 처리).
+        """
+        try:
+            return await self._client.fetch_award_price(
+                dep, dest, outbound_date, outbound_flight_no, inbound_date, inbound_flight_no
+            )
+        except Exception as exc:
+            print(f"[AwardSearchService] 마일리지 조회 실패: {type(exc).__name__}: {exc}", flush=True)
+            return None
